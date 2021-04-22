@@ -1,8 +1,18 @@
 
-const { Router } = require('express');
+const { Router, request } = require('express');
 const { check } = require('express-validator');
 
-const { validarCampos } = require('../middlewares/validar-campos');
+//aqui abajo tengo importado los middlewares de manera individual y posteriormente
+//los importamos mediante un index por buenas practicas
+// //middlewares
+// const { validarCampos } = require('../middlewares/validar-campos');
+// const { validarJWT } = require('../middlewares/validar-jwt');
+// const { esAdminRole, tieneRole } = require('../middlewares/validar-roles');
+const {
+    validarCampos, validarJWT,
+    esAdminRole, tieneRole,
+} = require('../middlewares');
+
 const { 
     esRolValido, correoExiste,
     existeUsuarioPorID 
@@ -36,6 +46,9 @@ router.put('/:id', [
 router.patch('/', usuariosPatch);
 
 router.delete('/:id', [
+    validarJWT,
+    // esAdminRole,
+    tieneRole('ADMIN_ROLE','VENTA_ROLE'),
     check('id','No es un ID Valido').isMongoId(),
     check('id').custom(existeUsuarioPorID),
     // check('rol').custom(esRolValido),

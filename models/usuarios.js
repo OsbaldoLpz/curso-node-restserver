@@ -36,7 +36,8 @@ const UsuarioSchema = Schema({
 
 //este metodo es para quitar parametros del objeto que vienen de la base de datos
 UsuarioSchema.methods.toJSON = function(){
-  const { __v, password, ...usuario } = this.toObject(); 
+  const { __v, password, _id, ...usuario } = this.toObject(); 
+  usuario.uid = _id;
   return usuario;
 }
 
