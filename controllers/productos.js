@@ -1,21 +1,19 @@
-const { request, response } = require("express");
-
+const { response } = require('express');
 const { Producto } = require('../models');
 
-const obtenerProductos = async (req = request, res = response) => {
 
-    const { limite = 5, desde = 0} = req.query;
+const obtenerProductos = async(req, res = response ) => {
 
-    //el motivo de mandar a llamar varias promesas en un arreglo
-    // es por que las peticiones no dependen entre si  de modo
-    // que podemos optimizar el tiempo de respuesta de esta manera
-    const [total, productos] = await Promise.all([
-        Producto.countDocuments({estado: true}),
-        Producto.find({estado:true})
-            .skip(Number(desde))
-            .limit(Number(limite))
+    const { limite = 5, desde = 0 } = req.query;
+    const query = { estado: true };
+
+    const [ total, productos ] = await Promise.all([
+        Producto.countDocuments(query),
+        Producto.find(query)
             .populate('usuario', 'nombre')
             .populate('categoria', 'nombre')
+            .skip( Number( desde ) )
+            .limit(Number( limite ))
     ]);
 
     res.json({
@@ -24,70 +22,77 @@ const obtenerProductos = async (req = request, res = response) => {
     });
 }
 
-const obtenerProductoPorID = async(req = request, res = response) => {
-    const id = req.params.id;
+const obtenerProducto = async(req, res = response ) => {
 
-    const producto = await Producto.findById(id)
-                        .populate('usuario', 'nombre')
-                        .populate('categoria', 'nombre');
+    const { id } = req.params;
+    const producto = await Producto.findById( id )
+                            .populate('usuario', 'nombre')
+                            .populate('categoria', 'nombre');
 
-    res.json({
-        producto
-    });
+    res.json( producto );
+
 }
 
-const crearProducto = async (req = request, res = response) => {
+const crearProducto = async(req, res = response ) => {
 
-    const nombre = req.body.nombre.toUpperCase();
-    const { precio, descripcion, categoria} = req.body;
+    const { estado, usuario, ...body } = req.body;
 
-    // //generar la data a guardar
-    // const data = {
-    //     nombre, 
-    //     usuario: req.usuario._id
-    // }
+    const productoDB = await Producto.findOne({ nombre: body.nombre });
 
-    // console.log(data);
+    if ( productoDB ) {
+        return res.status(400).json({
+            msg: `El producto ${ productoDB.nombre }, ya existe`
+        });
+    }
 
-    // const categoria = new Categoria(data);
+    // Generar la data a guardar
+    const data = {
+        ...body,
+        nombre: body.nombre.toUpperCase(),
+        usuario: req.usuario._id
+    }
 
-    // //guardar db
-    // await categoria.save();
+    const producto = new Producto( data );
 
-    res.status(201).json({
-        msg:'Producto Agregada'
-    });
+    // Guardar DB
+    await producto.save();
+
+    res.status(201).json(producto);
+
 }
 
-const actualizarProducto = async(req = request, res=response) => {
-    
-    // const id = req.params.id;
-    // const nombre = req.body.nombre.toUpperCase();
-    // const usuario = req.usuario._id;
-    // const categoriaActualizar = await Categoria.findByIdAndUpdate(id,{nombre,usuario});
-    
-    res.json({
-        msg:'Producto Actualizada',
-    });
+const actualizarProducto = async( req, res = response ) => {
+
+    const { id } = req.params;
+    const { estado, usuario, ...data } = req.body;
+
+    if( data.nombre ) {
+        data.nombre  = data.nombre.toUpperCase();
+    }
+
+    data.usuario = req.usuario._id;
+
+    const producto = await Producto.findByIdAndUpdate(id, data, { new: true });
+
+    res.json( producto );
+
 }
 
-const eliminarProducto = async(req = request, res=response) => {
-    
-    // const id = req.params.id;
-    // const usuario = req.usuario._id;
-    // const categoriaDB = await Categoria.findByIdAndUpdate(id,{estado:false,usuario});
-    
-    res.json({
-        msg:'Producto Eliminada',
-        // categoriaDB
-    });
+const borrarProducto = async(req, res = response ) => {
+
+    const { id } = req.params;
+    const productoBorrado = await Producto.findByIdAndUpdate( id, { estado: false }, {new: true });
+
+    res.json( productoBorrado );
 }
+
+
 
 
 module.exports = {
-    obtenerProductos,
-    obtenerProductoPorID,
     crearProducto,
+    obtenerProductos,
+    obtenerProducto,
     actualizarProducto,
-    eliminarProducto
+    borrarProducto
 }
